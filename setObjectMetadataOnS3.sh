@@ -26,7 +26,8 @@ function setObjectMetadata() {
     headerKey=$3
     headerValue=$4
 
-    echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey --metadata-directive REPLACE --metadata $headerKey='$headerValue'"
+    echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
+    --metadata-directive REPLACE --metadata $headerKey='$headerValue'"
 }
 
 STDOUT=$(listAllBuckets)
@@ -46,14 +47,17 @@ for i in ${!allBuckets[@]}; do
            if eval $CMD
            then
                echo $CMD >> "success.out"
-               echo "[SUCCESS] Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} | Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
+               echo "[SUCCESS] Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} |\
+                Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
            else
                echo $CMD >> "error.out"
-               echo "[ERROR] Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} | Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
+               echo "[ERROR] Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} |\
+                Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
            fi
        else
            echo $CMD >> "script.out"
-           echo "Script Generated >> Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} | Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
+           echo "Script Generated >> Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} |\
+            Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
        fi
    done
 
