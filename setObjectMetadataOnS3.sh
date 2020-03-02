@@ -40,8 +40,8 @@ for i in ${!allBuckets[@]}; do
    STDOUT=$(replace "$STDOUT" "[\[|\]|\,|\"]" "")
    declare -a allObjects=($STDOUT)
    for j in ${!allObjects[@]}; do
-       CMD=$(setObjectMetadata ${allBuckets[$i]} ${allObjects[$j]} "Content-Disposition" "attachment")
-       if [[ $1 == "--apply" ]];
+       CMD=$(setObjectMetadata ${allBuckets[$i]} ${allObjects[$j]} "$1" "$2")
+       if [[ $3 == "--apply" ]];
        then
            if eval $CMD
            then
