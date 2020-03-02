@@ -4,7 +4,7 @@
 
 * You can set only one HTTP header for each execution.
 
-Execute with --apply to execute final command and set HTTP header. View log in success.out and error.out.
+Execute with --apply to execute final command and set HTTP header. View logs in success.out and error.out.
 ```shell
 $ ./setObjectMetadataOnS3.sh "Content-Disposition" "attachment" --apply
 ```
