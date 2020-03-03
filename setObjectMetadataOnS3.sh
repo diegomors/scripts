@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# https://docs.aws.amazon.com/cli/latest/reference/s3api/copy-object.html
 # https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html#object-metadata
 
 function replace() {
@@ -27,7 +28,9 @@ function setObjectMetadata() {
     headerValue=$4
 
     echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
-    --metadata-directive REPLACE --metadata $headerKey='$headerValue'"
+    --metadata-directive REPLACE --metadata '{\"$headerKey\":\"attachment; filename='$headerValue'\"}'"
+
+    '{"$headerKey":"attachment; filename='\"'$headerValue\""}'
 }
 
 STDOUT=$(listAllBuckets)
