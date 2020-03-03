@@ -24,8 +24,8 @@ function setObjectMetadata() {
     bucket=$1
     objectKey=$2
     path="/$bucket/$objectKey"
-    headerKey=$3
-    headerValue=$4
+    headerKey=$(replace "$3" "\"" "\\\"")
+    headerValue=$(replace "$4" "\"" "\\\"")
 
     echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
     --metadata-directive REPLACE --metadata '{\"$headerKey\":\"$headerValue\"}'"
