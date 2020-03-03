@@ -27,8 +27,14 @@ function setObjectMetadata() {
     headerKey=$(replace "$3" "\"" "\\\"")
     headerValue=$(replace "$4" "\"" "\\\"")
 
-    echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
-    --metadata-directive REPLACE --metadata '{\"$headerKey\":\"$headerValue\"}'"
+    if [[ "${headerKey^^}" == "CONTENT-DISPOSITION" ]];
+    then
+        echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
+        --metadata-directive REPLACE --content-disposition \"$headerValue\""
+    else
+        echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
+        --metadata-directive REPLACE --metadata '{\"$headerKey\":\"$headerValue\"}'"
+    fi
 }
 
 STDOUT=$(listAllBuckets)
