@@ -28,7 +28,7 @@ function setObjectMetadata() {
     headerValue=$4
 
     echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
-    --metadata-directive REPLACE --metadata '{\"$headerKey\":\"attachment; filename='$headerValue'\"}'"
+    --metadata-directive REPLACE --metadata '{\"$headerKey\":\"$headerValue\"}'"
 }
 
 STDOUT=$(listAllBuckets)
