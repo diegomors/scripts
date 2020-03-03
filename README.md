@@ -6,10 +6,10 @@
 
 Execute with --apply to execute final command and set HTTP header. View logs in success.out and error.out.
 ```shell
-$ ./setObjectMetadataOnS3.sh "Content-Disposition" "attachment" --apply
+$ ./setObjectMetadataOnS3.sh "Content-Disposition" "attachment; filename=\"example.jpeg\"" --apply
 ```
 
 Execute without --apply to generate final command to set HTTP header. View result in script.out.
 ```shell
-$ ./setObjectMetadataOnS3.sh "Content-Disposition" "attachment"
+$ ./setObjectMetadataOnS3.sh "Content-Disposition" "attachment; filename=\"example.jpeg\""
 ```
