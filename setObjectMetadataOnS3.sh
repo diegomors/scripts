@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 # https://docs.aws.amazon.com/cli/latest/reference/s3api/copy-object.html
-# https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html#object-metadata
 
 function replace() {
     term=$1
     pattern=$2
     new=$3
     echo "${term//$pattern/$new}"
-    return 1
 }
 
 function listAllBuckets() {
@@ -15,57 +13,103 @@ function listAllBuckets() {
 }
 
 function listObjectsByBucket() {
-    bucket=$1
-
-    aws s3api list-objects --bucket $bucket --query 'Contents[].Key'
+    bucket="$1"
+    aws s3api list-objects --bucket "$bucket" --query "Contents[].Key" --max-items 1
 }
 
 function setObjectMetadata() {
-    bucket=$1
-    objectKey=$2
+    bucket="$1"
+    objectKey="$2"
     path="/$bucket/$objectKey"
-    headerKey=$(replace "$3" "\"" "\\\"")
-    headerValue=$(replace "$4" "\"" "\\\"")
 
-    if [[ "${headerKey^^}" == "CONTENT-DISPOSITION" ]];
-    then
-        echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
-        --metadata-directive REPLACE --content-disposition \"$headerValue\""
-    else
-        echo "aws s3api copy-object --bucket $bucket --copy-source $path --key $objectKey \
-        --metadata-directive REPLACE --metadata '{\"$headerKey\":\"$headerValue\"}'"
-    fi
+    CMD="aws s3api copy-object --bucket $bucket --copy-source $path \
+        --key $objectKey --metadata-directive REPLACE"
+
+    for i in "${!HEADERS[@]}"
+    do
+        if [[ "${i^^}" == "CONTENT-DISPOSITION" ]];
+        then
+            CMD="${CMD} --content-disposition \"${HEADERS[$i]}\""
+        else
+            CMD="${CMD} --metadata '{\"$i\":\"${HEADERS[$i]}\"}'"
+        fi
+    done
+
+    echo $CMD
 }
 
-STDOUT=$(listAllBuckets)
-STDOUT=$(replace "$STDOUT" "[\[|\]|\,|\"]" "")
+function setObjectsByBucket() {
+    bucket="$1"
+    bucketSize=$2
 
-declare -a allBuckets=($STDOUT)
+    STDOUT=$(listObjectsByBucket "$bucket")
+    STDOUT=$(replace "$STDOUT" "[\[|\]|\,|\"]" "")
 
-for i in ${!allBuckets[@]}; do
+    declare -a allObjects=($STDOUT)
 
-   STDOUT=$(listObjectsByBucket ${allBuckets[$i]})
-   STDOUT=$(replace "$STDOUT" "[\[|\]|\,|\"]" "")
-   declare -a allObjects=($STDOUT)
-   for j in ${!allObjects[@]}; do
-       CMD=$(setObjectMetadata ${allBuckets[$i]} ${allObjects[$j]} "$1" "$2")
-       if [[ $3 == "--apply" ]];
-       then
-           if eval $CMD
-           then
-               echo $CMD >> "success.out"
-               echo "[SUCCESS] Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} |\
-                Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
-           else
-               echo $CMD >> "error.out"
-               echo "[ERROR] Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} |\
-                Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
-           fi
-       else
-           echo $CMD >> "script.out"
-           echo "Script Generated >> Bucket $((i+1))/${#allBuckets[@]} ${allBuckets[$i]} |\
-            Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}"
-       fi
-   done
+    for j in ${!allObjects[@]};
+    do
+        CMD=$(setObjectMetadata "$bucket" ${allObjects[$j]})
+        if [[ $APPLY == 1 ]];
+        then
+            if eval $CMD
+            then
+                echo $CMD >> "success.out"
+                echo "[SUCCESS] Bucket $((i+1))/$bucketSize $bucket |\
+                    Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}" >&2
+            else
+                echo $CMD >> "error.out"
+                echo "[ERROR] Bucket $((i+1))/$bucketSize $bucket |\
+                    Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}" >&2
+            fi
+        else
+            echo $CMD >> "script.out"
+            echo "[Script Generated] Bucket $((i+1))/$bucketSize $bucket |\
+                Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}" >&2
+        fi
+    done
+}
 
+APPLY=0
+BUCKET=""
+declare -A HEADERS=()
+
+for i in "$@"
+do
+    case $i in
+        -a|--apply)
+        APPLY=1
+        shift
+        ;;
+        -b=*|--bucket=*)
+        KEY="${i//=[^.]*}"
+        BUCKET="${i/$KEY=}"
+        shift
+        ;;
+        *=*)
+        KEY="${i//=[^.]*}"
+        VALUE="${i/$KEY=}"
+        HEADERS+=(["$KEY"]="$VALUE")
+        shift
+        ;;
+        *)
+        echo "Invalid Option: $i" >&2
+        exit 125
+        ;;
+    esac
 done
+
+if [[ "$BUCKET" == "" ]];
+then
+    _STDOUT=$(listAllBuckets)
+    _STDOUT=$(replace "$_STDOUT" "[\[|\]|\,|\"]" "")
+
+    declare -a ALL_BUCKETS=($_STDOUT)
+
+    for i in ${!ALL_BUCKETS[@]};
+    do
+        echo $(setObjectsByBucket "${ALL_BUCKETS[$i]}" ${#ALL_BUCKETS[@]})
+    done
+else
+    echo $(setObjectsByBucket "$BUCKET" 1)
+fi
