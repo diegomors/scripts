@@ -72,7 +72,7 @@ function setObjectsByBucket() {
 
 if [[ $# == 0 ]];
 then
-    echo "$(cat HELP_setObjectMetadataOnS3.md)"
+    echo "$(cat ../docs/HELP_setObjectMetadataOnS3.md)"
     exit 125
 fi
 
@@ -105,7 +105,7 @@ do
         shift
         ;;
         *)
-        echo "$(cat HELP_setObjectMetadataOnS3.md)"
+        echo "$(cat ../docs/HELP_setObjectMetadataOnS3.md)"
         exit 125
         ;;
     esac
