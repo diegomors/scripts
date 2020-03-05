@@ -63,7 +63,6 @@ function setObjectsByBucket() {
         else
             echo $cmd >> "script.out"
             echo "[Script Generated] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
-            #echo $cmd >&2
         fi
     done
 }
