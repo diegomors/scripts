@@ -51,6 +51,14 @@ function setObjectsByBucket() {
     stdout=$(listObjectsByBucket "$bucket")
     stdout=$(replace "$stdout" "[\[|\]|\,|\"]" "")
 
+    if [[ $APPLY == 1 ]];
+    then
+        echo "" > "success.out"
+        echo "" > "error.out"
+    else
+        echo "" > "script.out"
+    fi
+
     declare -a allObjects=($stdout)
 
     for j in ${!allObjects[@]};
