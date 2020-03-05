@@ -14,7 +14,7 @@ function listAllBuckets() {
 
 function listObjectsByBucket() {
     bucket="$1"
-    aws s3api list-objects --bucket "$bucket" --query "Contents[].Key" --max-items 1
+    aws s3api list-objects --bucket "$bucket" --query "Contents[].Key" --max-items 10
 }
 
 function setObjectMetadata() {
@@ -22,50 +22,48 @@ function setObjectMetadata() {
     objectKey="$2"
     path="/$bucket/$objectKey"
 
-    CMD="aws s3api copy-object --bucket $bucket --copy-source $path \
+    cmd="aws s3api copy-object --bucket $bucket --copy-source $path \
         --key $objectKey --metadata-directive REPLACE"
 
     for i in "${!HEADERS[@]}"
     do
         if [[ "${i^^}" == "CONTENT-DISPOSITION" ]];
         then
-            CMD="${CMD} --content-disposition \"${HEADERS[$i]}\""
+            cmd="${cmd} --content-disposition \"${HEADERS[$i]}\""
         else
-            CMD="${CMD} --metadata '{\"$i\":\"${HEADERS[$i]}\"}'"
+            cmd="${cmd} --metadata '{\"$i\":\"${HEADERS[$i]}\"}'"
         fi
     done
 
-    echo $CMD
+    echo $cmd
 }
 
 function setObjectsByBucket() {
     bucket="$1"
     bucketSize=$2
 
-    STDOUT=$(listObjectsByBucket "$bucket")
-    STDOUT=$(replace "$STDOUT" "[\[|\]|\,|\"]" "")
+    stdout=$(listObjectsByBucket "$bucket")
+    stdout=$(replace "$stdout" "[\[|\]|\,|\"]" "")
 
-    declare -a allObjects=($STDOUT)
+    declare -a allObjects=($stdout)
 
     for j in ${!allObjects[@]};
     do
-        CMD=$(setObjectMetadata "$bucket" ${allObjects[$j]})
+        cmd=$(setObjectMetadata "$bucket" ${allObjects[$j]})
         if [[ $APPLY == 1 ]];
         then
-            if eval $CMD
+            if eval $cmd
             then
-                echo $CMD >> "success.out"
-                echo "[SUCCESS] Bucket $((i+1))/$bucketSize $bucket |\
-                    Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}" >&2
+                echo $cmd >> "success.out"
+                echo "[SUCCESS] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
             else
-                echo $CMD >> "error.out"
-                echo "[ERROR] Bucket $((i+1))/$bucketSize $bucket |\
-                    Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}" >&2
+                echo $cmd >> "error.out"
+                echo "[ERROR] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
             fi
         else
-            echo $CMD >> "script.out"
-            echo "[Script Generated] Bucket $((i+1))/$bucketSize $bucket |\
-                Object $((j+1))/${#allObjects[@]} ${allObjects[$j]}" >&2
+            echo $cmd >> "script.out"
+            echo "[Script Generated] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+            #echo $cmd >&2
         fi
     done
 }
@@ -80,27 +78,27 @@ APPLY=0
 BUCKET=""
 declare -A HEADERS=()
 
-for i in "$@"
+for arg in "$@"
 do
-    case $i in
+    case $arg in
         -a|--apply)
         APPLY=1
         shift
         ;;
         -b=*|--bucket=*)
-        KEY="${i//=[^.]*}"
-        BUCKET="${i/$KEY=}"
+        KEY="${arg//=[^.]*}"
+        BUCKET="${arg/$KEY=}"
         shift
         ;;
         *=*)
-        KEY="${i//=[^.]*}"
-        VALUE="${i/$KEY=}"
+        KEY="${arg//=[^.]*}"
+        VALUE="${arg/$KEY=}"
         HEADERS+=(["$KEY"]="$VALUE")
         shift
         ;;
         -h=--help)
-        KEY="${i//=[^.]*}"
-        VALUE="${i/$KEY=}"
+        KEY="${arg//=[^.]*}"
+        VALUE="${arg/$KEY=}"
         HEADERS+=(["$KEY"]="$VALUE")
         shift
         ;;
@@ -113,15 +111,17 @@ done
 
 if [[ "$BUCKET" == "" ]];
 then
-    _STDOUT=$(listAllBuckets)
-    _STDOUT=$(replace "$_STDOUT" "[\[|\]|\,|\"]" "")
+    STDOUT=$(listAllBuckets)
+    STDOUT=$(replace "$STDOUT" "[\[|\]|\,|\"]" "")
 
-    declare -a ALL_BUCKETS=($_STDOUT)
+    declare -a ALL_BUCKETS=($STDOUT)
 
-    for i in ${!ALL_BUCKETS[@]};
+    for b in ${!ALL_BUCKETS[@]};
     do
-        echo $(setObjectsByBucket "${ALL_BUCKETS[$i]}" ${#ALL_BUCKETS[@]})
+        echo "Bucket ${ALL_BUCKETS[$b]}"
+        $(setObjectsByBucket "${ALL_BUCKETS[$b]}" ${#ALL_BUCKETS[@]})
     done
 else
-    echo $(setObjectsByBucket "$BUCKET" 1)
+    echo "Bucket $BUCKET"
+    $(setObjectsByBucket "$BUCKET" 1)
 fi
