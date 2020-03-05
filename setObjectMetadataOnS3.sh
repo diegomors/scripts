@@ -70,6 +70,12 @@ function setObjectsByBucket() {
     done
 }
 
+if [[ $# == 0 ]];
+then
+    echo "$(cat HELP_setObjectMetadataOnS3.md)"
+    exit 125
+fi
+
 APPLY=0
 BUCKET=""
 declare -A HEADERS=()
@@ -92,8 +98,14 @@ do
         HEADERS+=(["$KEY"]="$VALUE")
         shift
         ;;
+        -h=--help)
+        KEY="${i//=[^.]*}"
+        VALUE="${i/$KEY=}"
+        HEADERS+=(["$KEY"]="$VALUE")
+        shift
+        ;;
         *)
-        echo "Invalid Option: $i" >&2
+        echo "$(cat HELP_setObjectMetadataOnS3.md)"
         exit 125
         ;;
     esac
