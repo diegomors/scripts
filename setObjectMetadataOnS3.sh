@@ -14,7 +14,13 @@ function listAllBuckets() {
 
 function listObjectsByBucket() {
     bucket="$1"
-    aws s3api list-objects --bucket "$bucket" --query "Contents[].Key" --max-items 10
+
+    if [[ $MAX_ITEMS == 0 ]];
+    then
+        aws s3api list-objects --bucket "$bucket" --query "Contents[].Key"
+    else
+        aws s3api list-objects --bucket "$bucket" --query "Contents[].Key" --max-items $MAX_ITEMS
+    fi
 }
 
 function setObjectMetadata() {
@@ -69,12 +75,13 @@ function setObjectsByBucket() {
 
 if [[ $# == 0 ]];
 then
-    echo "$(cat ../docs/HELP_setObjectMetadataOnS3.md)"
+    echo "$(cat HELP_setObjectMetadataOnS3.md)"
     exit 125
 fi
 
 APPLY=0
 BUCKET=""
+MAX_ITEMS=0
 declare -A HEADERS=()
 
 for arg in "$@"
@@ -87,6 +94,11 @@ do
         -b=*|--bucket=*)
         KEY="${arg//=[^.]*}"
         BUCKET="${arg/$KEY=}"
+        shift
+        ;;
+        -m=*|--max-items=*)
+        KEY="${arg//=[^.]*}"
+        MAX_ITEMS=${arg/$KEY=}
         shift
         ;;
         *=*)
@@ -102,7 +114,7 @@ do
         shift
         ;;
         *)
-        echo "$(cat ../docs/HELP_setObjectMetadataOnS3.md)"
+        echo "$(cat HELP_setObjectMetadataOnS3.md)"
         exit 125
         ;;
     esac

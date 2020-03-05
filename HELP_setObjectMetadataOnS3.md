@@ -18,3 +18,9 @@ Execute to many headers.
 ```shell
 $ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"example.jpeg\"" "Header2"="Value2" "Header3"="Value3"
 ```
+
+Execute with max-items per bucket filter.
+```shell
+$ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"example.jpeg\"" -b="bucket.aws.com" -m 100
+$ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"example.jpeg\"" -b="bucket.aws.com" --max-items 100
+```
