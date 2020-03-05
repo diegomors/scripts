@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# https://docs.aws.amazon.com/cli/latest/reference/s3api/list-objects.html
 # https://docs.aws.amazon.com/cli/latest/reference/s3api/copy-object.html
 
 function replace() {
@@ -8,18 +9,24 @@ function replace() {
     echo "${term//$pattern/$new}"
 }
 
+function extract() {
+    term=$1
+    pattern=$2
+    echo "$term" | grep -P "$pattern" -o
+}
+
 function listAllBuckets() {
     aws s3api list-buckets --query "Buckets[].Name"
 }
 
 function listObjectsByBucket() {
     bucket="$1"
-
-    if [[ $MAX_ITEMS == 0 ]];
+    nextToken="$2"
+    if [[ "${nextToken}" == "" ]];
     then
-        aws s3api list-objects --bucket "$bucket" --query "Contents[].Key"
+        aws s3api list-objects --bucket "$bucket" --query "{NextToken: NextToken, Key: Contents[].Key}" --max-items=$MAX_ITEMS
     else
-        aws s3api list-objects --bucket "$bucket" --query "Contents[].Key" --max-items $MAX_ITEMS
+        aws s3api list-objects --bucket "$bucket" --query "{NextToken: NextToken, Key: Contents[].Key}" --max-items=$MAX_ITEMS --starting-token $nextToken
     fi
 }
 
@@ -48,9 +55,6 @@ function setObjectsByBucket() {
     bucket="$1"
     bucketSize=$2
 
-    stdout=$(listObjectsByBucket "$bucket")
-    stdout=$(replace "$stdout" "[\[|\]|\,|\"]" "")
-
     if [[ $APPLY == 1 ]];
     then
         echo "" > "success.out"
@@ -59,24 +63,70 @@ function setObjectsByBucket() {
         echo "" > "script.out"
     fi
 
-    declare -a allObjects=($stdout)
+    lastToken=""
+    nextToken=""
+    lastKey=""
 
-    for j in ${!allObjects[@]};
+    while :
     do
-        cmd=$(setObjectMetadata "$bucket" ${allObjects[$j]})
-        if [[ $APPLY == 1 ]];
-        then
-            if eval $cmd
+        declare -a allObjects=()
+
+        stdout=$(listObjectsByBucket "$bucket" "$nextToken")
+
+        props=$(extract "$stdout" "\"[^\"]+\"")
+        props=$(replace "$props" "\"" "")
+
+        while IFS= read -r line
+        do
+            case "$lastKey" in
+                "NextToken")
+                if [[ "$line" != "Key" ]];
+                then
+                    nextToken="$line"
+                fi
+                shift
+                ;;
+                "Key")
+                if [[ "$line" != "NextToken" ]];
+                then
+                    allObjects+=("$line")
+                fi
+                shift
+                ;;
+            esac
+
+            case "$line" in
+                "NextToken"|"Key")
+                lastKey="$line"
+                shift
+                ;;
+            esac
+        done < <(echo "$props")
+
+        for j in ${!allObjects[@]};
+        do
+            cmd=$(setObjectMetadata "$bucket" ${allObjects[$j]})
+            if [[ $APPLY == 1 ]];
             then
-                echo $cmd >> "success.out"
-                echo "[SUCCESS] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+                if eval $cmd
+                then
+                    echo $cmd >> "success.out"
+                    echo "[SUCCESS] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+                else
+                    echo $cmd >> "error.out"
+                    echo "[ERROR] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+                fi
             else
-                echo $cmd >> "error.out"
-                echo "[ERROR] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+                echo $cmd >> "script.out"
+                echo "[Script Generated] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
             fi
+        done
+
+        if [[ "${nextToken}" == "${lastToken}" ]];
+        then
+            break
         else
-            echo $cmd >> "script.out"
-            echo "[Script Generated] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+            lastToken="$nextToken"
         fi
     done
 }
@@ -89,7 +139,7 @@ fi
 
 APPLY=0
 BUCKET=""
-MAX_ITEMS=0
+MAX_ITEMS=1000
 declare -A HEADERS=()
 
 for arg in "$@"
@@ -137,10 +187,10 @@ then
 
     for b in ${!ALL_BUCKETS[@]};
     do
-        echo "Bucket ${ALL_BUCKETS[$b]}"
+        echo "Getting Objects From Bucket ${ALL_BUCKETS[$b]}"
         $(setObjectsByBucket "${ALL_BUCKETS[$b]}" ${#ALL_BUCKETS[@]})
     done
 else
-    echo "Bucket $BUCKET"
+    echo "Getting Objects From Bucket $BUCKET"
     $(setObjectsByBucket "$BUCKET" 1)
 fi

@@ -21,6 +21,6 @@ $ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"examp
 
 Execute with max-items per bucket filter.
 ```shell
-$ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"example.jpeg\"" -b="bucket.aws.com" -m=100
-$ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"example.jpeg\"" -b="bucket.aws.com" --max-items=100
+$ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"example.jpeg\"" -b="bucket.aws.com" -m=1000
+$ ./setObjectMetadataOnS3.sh "Content-Disposition"="attachment; filename=\"example.jpeg\"" -b="bucket.aws.com" --max-items=1000
 ```
