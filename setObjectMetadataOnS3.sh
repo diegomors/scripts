@@ -214,8 +214,10 @@ then
 
     for b in ${!ALL_BUCKETS[@]};
     do
+        # TODO: paralelizar execução por bucket com nohup
         $(setObjectsByBucket "${ALL_BUCKETS[$b]}" ${#ALL_BUCKETS[@]})
     done
 else
+    # TODO: paralelizar execução por bucket com nohup
     $(setObjectsByBucket "$BUCKET" 1)
 fi
