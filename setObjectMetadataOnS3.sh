@@ -45,7 +45,7 @@ function setObjectMetadata() {
     objectKey="$2"
     path="/$bucket/$objectKey"
 
-    cmd="aws s3api copy-object --bucket $bucket --copy-source $path \
+    cmd="aws s3api copy-object --bucket $bucket --acl public-read --copy-source $path \
         --key $objectKey --metadata-directive REPLACE"
 
     for i in "${!HEADERS[@]}"
