@@ -67,14 +67,6 @@ function setObjectsByBucket() {
 
     echo "Begin Process to Bucket $bucket" >&2
 
-    if [[ $APPLY == 1 ]];
-    then
-        echo "" > "success.out"
-        echo "" > "error.out"
-    else
-        echo "" > "script.out"
-    fi
-
     bucketLength=$(getBucketLength $bucket)
     runSuccess=0
     runFail=0
@@ -130,18 +122,18 @@ function setObjectsByBucket() {
                 if eval $cmd
                 then
                     runSuccess=$((runSuccess+1))
-                    echo "# $(date --iso-8601=seconds) | $bucket | [S:$runSuccess | E:$runFail]/$bucketLength | $nextToken" >> "success.out"
+                    echo "# $(date --iso-8601=seconds) | $bucket | [S:$runSuccess | E:$runFail]/$bucketLength | $nextToken" >> "$folderPath/success.out"
                     echo $cmd >> "$folderPath/success.out"
                     echo "[SUCCESS] Bucket $((i+1))/$allBucketsCount $bucket | Object [S:$runSuccess | E:$runFail]/$bucketLength" >&2
                 else
                     runFail=$((runFail+1))
-                    echo "# $(date --iso-8601=seconds) | $bucket | [S:$runSuccess | E:$runFail]/$bucketLength | $nextToken" >> "error.out"
+                    echo "# $(date --iso-8601=seconds) | $bucket | [S:$runSuccess | E:$runFail]/$bucketLength | $nextToken" >> "$folderPath/error.out"
                     echo $cmd >> "$folderPath/error.out"
                     echo "[ERROR] Bucket $((i+1))/$allBucketsCount $bucket | Object [S:$runSuccess | E:$runFail]/$bucketLength" >&2
                 fi
             else
                 runSuccess=$((runSuccess+1))
-                echo "# $(date --iso-8601=seconds) | $bucket | $runSuccess/$bucketLength | $nextToken" >> "script.out"
+                echo "# $(date --iso-8601=seconds) | $bucket | $runSuccess/$bucketLength | $nextToken" >> "$folderPath/script.out"
                 echo $cmd >> "$folderPath/script.out"
                 echo "[Script Generated] Bucket $((i+1))/$allBucketsCount $bucket | Object $runSuccess/$bucketLength" >&2
             fi
