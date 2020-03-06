@@ -16,12 +16,22 @@ function extract() {
 }
 
 function listAllBuckets() {
+    echo "Getting All Buckets From S3" >&2
     aws s3api list-buckets --query "Buckets[].Name"
+}
+
+function getBucketLength() {
+    bucket="$1"
+    echo "Getting Length of Bucket $bucket" >&2
+    aws s3api list-objects --bucket $bucket --query "length(Contents[])"
 }
 
 function listObjectsByBucket() {
     bucket="$1"
     nextToken="$2"
+
+    echo "Getting Objects From Bucket $bucket | Token: $nextToken" >&2
+
     if [[ "${nextToken}" == "" ]];
     then
         aws s3api list-objects --bucket "$bucket" --query "{NextToken: NextToken, Key: Contents[].Key}" --max-items=$MAX_ITEMS
@@ -53,7 +63,9 @@ function setObjectMetadata() {
 
 function setObjectsByBucket() {
     bucket="$1"
-    bucketSize=$2
+    allBucketsCount=$2
+
+    echo "Begin Process to Bucket $bucket" >&2
 
     if [[ $APPLY == 1 ]];
     then
@@ -63,12 +75,19 @@ function setObjectsByBucket() {
         echo "" > "script.out"
     fi
 
+    bucketLength=$(getBucketLength $bucket)
+    runSuccess=0
+    runFail=0
+
     lastToken=""
     nextToken=""
     lastKey=""
 
     while :
     do
+        folderPath="out/$(date +%+4Y-%m-%d/%H)"
+        mkdir -p $folderPath
+
         declare -a allObjects=()
 
         stdout=$(listObjectsByBucket "$bucket" "$nextToken")
@@ -110,15 +129,21 @@ function setObjectsByBucket() {
             then
                 if eval $cmd
                 then
-                    echo $cmd >> "success.out"
-                    echo "[SUCCESS] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+                    runSuccess=$((runSuccess+1))
+                    echo "# $(date --iso-8601=seconds) | $bucket | [S:$runSuccess | E:$runFail]/$bucketLength | $nextToken" >> "success.out"
+                    echo $cmd >> "$folderPath/success.out"
+                    echo "[SUCCESS] Bucket $((i+1))/$allBucketsCount $bucket | Object [S:$runSuccess | E:$runFail]/$bucketLength" >&2
                 else
-                    echo $cmd >> "error.out"
-                    echo "[ERROR] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+                    runFail=$((runFail+1))
+                    echo "# $(date --iso-8601=seconds) | $bucket | [S:$runSuccess | E:$runFail]/$bucketLength | $nextToken" >> "error.out"
+                    echo $cmd >> "$folderPath/error.out"
+                    echo "[ERROR] Bucket $((i+1))/$allBucketsCount $bucket | Object [S:$runSuccess | E:$runFail]/$bucketLength" >&2
                 fi
             else
-                echo $cmd >> "script.out"
-                echo "[Script Generated] Bucket $((i+1))/$bucketSize $bucket | Object $((j+1))/${#allObjects[@]}" >&2
+                runSuccess=$((runSuccess+1))
+                echo "# $(date --iso-8601=seconds) | $bucket | $runSuccess/$bucketLength | $nextToken" >> "script.out"
+                echo $cmd >> "$folderPath/script.out"
+                echo "[Script Generated] Bucket $((i+1))/$allBucketsCount $bucket | Object $runSuccess/$bucketLength" >&2
             fi
         done
 
@@ -129,11 +154,13 @@ function setObjectsByBucket() {
             lastToken="$nextToken"
         fi
     done
+
+    echo "End Process to Bucket $bucket" >&2
 }
 
 if [[ $# == 0 ]];
 then
-    echo "$(cat HELP_setObjectMetadataOnS3.md)"
+    echo "$(cat setObjectMetadataOnS3_HELP.md)"
     exit 125
 fi
 
@@ -172,7 +199,7 @@ do
         shift
         ;;
         *)
-        echo "$(cat HELP_setObjectMetadataOnS3.md)"
+        echo "$(cat setObjectMetadataOnS3_HELP.md)"
         exit 125
         ;;
     esac
@@ -187,10 +214,8 @@ then
 
     for b in ${!ALL_BUCKETS[@]};
     do
-        echo "Getting Objects From Bucket ${ALL_BUCKETS[$b]}"
         $(setObjectsByBucket "${ALL_BUCKETS[$b]}" ${#ALL_BUCKETS[@]})
     done
 else
-    echo "Getting Objects From Bucket $BUCKET"
     $(setObjectsByBucket "$BUCKET" 1)
 fi

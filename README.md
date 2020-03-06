@@ -2,7 +2,7 @@
 
 ### setObjectMetadataOnS3.sh
 
-[View Help Document](HELP_setObjectMetadataOnS3.md)
+[View Help Document](setObjectMetadataOnS3_HELP.md)
 
 ```shell
 $ ./setObjectMetadataOnS3.sh
